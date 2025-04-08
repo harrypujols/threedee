@@ -11,12 +11,15 @@ scene.background = new THREE.Color(0x111111);
  * @type {THREE.PerspectiveCamera}
  */
 const camera = new THREE.PerspectiveCamera(
-  75, // Field of view
+  75, // Your specified FOV: 75.000
   window.innerWidth / window.innerHeight, // Aspect ratio
   0.1, // Near plane
   1000 // Far plane
 );
-camera.position.z = 5;
+
+// Set the initial camera position
+camera.position.set(-0.521, -0.073, 0.948); // Your specified position
+camera.rotation.set(0.077, -0.502, 0.037); // Your specified rotation
 
 /**
  * Create WebGL renderer with antialiasing
@@ -48,6 +51,60 @@ scene.add(directionalLight);
  */
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
+
+// Set the initial target for OrbitControls
+controls.target.set(0.0, 0.0, 0.0); // Your specified target
+controls.update(); // Important: call this after changing target
+
+// Add event listener for control changes
+controls.addEventListener("change", () => {
+  // Log camera position and zoom info
+  console.log("Camera Position:", {
+    x: camera.position.x.toFixed(3),
+    y: camera.position.y.toFixed(3),
+    z: camera.position.z.toFixed(3),
+  });
+
+  // Log camera rotation
+  console.log("Camera Rotation:", {
+    x: camera.rotation.x.toFixed(3),
+    y: camera.rotation.y.toFixed(3),
+    z: camera.rotation.z.toFixed(3),
+  });
+
+  // Log controls target (what the camera is looking at)
+  console.log("Controls Target:", {
+    x: controls.target.x.toFixed(3),
+    y: controls.target.y.toFixed(3),
+    z: controls.target.z.toFixed(3),
+  });
+
+  // Log camera field of view
+  console.log("Camera FOV:", camera.fov.toFixed(3));
+});
+
+// Add key command to save position
+window.addEventListener("keydown", (event) => {
+  if (event.key === "s" || event.key === "S") {
+    console.log("\nCamera Setup Configuration:");
+    console.log(
+      `camera.position.set(${camera.position.x.toFixed(
+        3
+      )}, ${camera.position.y.toFixed(3)}, ${camera.position.z.toFixed(3)});`
+    );
+    console.log(
+      `camera.rotation.set(${camera.rotation.x.toFixed(
+        3
+      )}, ${camera.rotation.y.toFixed(3)}, ${camera.rotation.z.toFixed(3)});`
+    );
+    console.log(
+      `controls.target.set(${controls.target.x.toFixed(
+        3
+      )}, ${controls.target.y.toFixed(3)}, ${controls.target.z.toFixed(3)});`
+    );
+    console.log(`camera.fov = ${camera.fov.toFixed(3)};`);
+  }
+});
 
 /**
  * Load and process PLY file
