@@ -45,16 +45,60 @@ const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
 directionalLight.position.set(1, 1, 1);
 scene.add(directionalLight);
 
+// Add world axes helper
+const worldAxesHelper = new THREE.AxesHelper(1);
+worldAxesHelper.material.linewidth = 2;
+scene.add(worldAxesHelper);
+
+// Create a container for the mesh
+const meshContainer = new THREE.Group();
+meshContainer.position.x = 0.3; // Updated from 0.25 to 0.3 (30% to the right)
+meshContainer.rotation.y = THREE.MathUtils.degToRad(85);
+
+// Add local axes helper to the container
+const localAxesHelper = new THREE.AxesHelper(0.5);
+localAxesHelper.material.linewidth = 2;
+meshContainer.add(localAxesHelper);
+
+scene.add(meshContainer);
+
+// Add axis labels
+const createAxisLabel = (text, position, color) => {
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+  canvas.width = 64;
+  canvas.height = 32;
+  context.fillStyle = color;
+  context.font = "24px Arial";
+  context.fillText(text, 0, 24);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+  const sprite = new THREE.Sprite(spriteMaterial);
+  sprite.position.copy(position);
+  sprite.scale.set(0.1, 0.05, 1);
+  return sprite;
+};
+
+// Add world axis labels
+scene.add(createAxisLabel("X", new THREE.Vector3(1.1, 0, 0), "#ff0000"));
+scene.add(createAxisLabel("Y", new THREE.Vector3(0, 1.1, 0), "#00ff00"));
+scene.add(createAxisLabel("Z", new THREE.Vector3(0, 0, 1.1), "#0000ff"));
+
 /**
  * Add orbit controls for camera manipulation
  * @type {OrbitControls}
  */
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
+controls.target.set(0.0, 0.0, 0.0);
 
-// Set the initial target for OrbitControls
-controls.target.set(0.0, 0.0, 0.0); // Your specified target
-controls.update(); // Important: call this after changing target
+// Variable to control rotation
+let isRotating = true;
+const rotationSpeed = 0.01; // Adjust this value to change rotation speed
+
+// Add keyboard controls for axis visibility
+let axesVisible = true;
 
 // Add event listener for control changes
 controls.addEventListener("change", () => {
@@ -103,6 +147,51 @@ window.addEventListener("keydown", (event) => {
       )}, ${controls.target.y.toFixed(3)}, ${controls.target.z.toFixed(3)});`
     );
     console.log(`camera.fov = ${camera.fov.toFixed(3)};`);
+    console.log(`\nContainer Configuration:`);
+    console.log(
+      `meshContainer.position.x = ${meshContainer.position.x.toFixed(3)};`
+    );
+    console.log(
+      `meshContainer.rotation.y = ${meshContainer.rotation.y.toFixed(
+        3
+      )}; // ${THREE.MathUtils.radToDeg(meshContainer.rotation.y).toFixed(
+        1
+      )} degrees`
+    );
+  }
+  if (event.key === "r" || event.key === "R") {
+    isRotating = !isRotating;
+    console.log("Rotation:", isRotating ? "ON" : "OFF");
+  }
+  if (event.key === "a" || event.key === "A") {
+    axesVisible = !axesVisible;
+    worldAxesHelper.visible = axesVisible;
+    localAxesHelper.visible = axesVisible;
+    console.log("Axes:", axesVisible ? "ON" : "OFF");
+  }
+  // Add arrow key controls for fine-tuning the rotation axis
+  if (event.key === "ArrowRight") {
+    meshContainer.position.x += 0.1;
+    console.log("Container X position:", meshContainer.position.x.toFixed(3));
+  }
+  if (event.key === "ArrowLeft") {
+    meshContainer.position.x -= 0.1;
+    console.log("Container X position:", meshContainer.position.x.toFixed(3));
+  }
+  // Add controls for Y rotation adjustment
+  if (event.key === "ArrowUp") {
+    meshContainer.rotation.y += THREE.MathUtils.degToRad(5);
+    console.log(
+      "Container Y rotation (degrees):",
+      THREE.MathUtils.radToDeg(meshContainer.rotation.y).toFixed(1)
+    );
+  }
+  if (event.key === "ArrowDown") {
+    meshContainer.rotation.y -= THREE.MathUtils.degToRad(5);
+    console.log(
+      "Container Y rotation (degrees):",
+      THREE.MathUtils.radToDeg(meshContainer.rotation.y).toFixed(1)
+    );
   }
 });
 
@@ -121,6 +210,12 @@ loader.load(
     // Enable vertex colors and compute normals
     geometry.computeVertexNormals();
 
+    // Compute the bounding box before creating the mesh
+    geometry.computeBoundingBox();
+    const center = new THREE.Vector3();
+    geometry.boundingBox.getCenter(center);
+    geometry.center();
+
     /**
      * Create material with vertex colors enabled
      * @type {THREE.MeshStandardMaterial}
@@ -138,17 +233,8 @@ loader.load(
      */
     const mesh = new THREE.Mesh(geometry, material);
 
-    // Center the geometry
-    geometry.computeBoundingBox();
-    /** @type {THREE.Vector3} */
-    const center = new THREE.Vector3();
-    geometry.boundingBox.getCenter(center);
-    geometry.center();
-
     // Scale the model to fit the view
-    /** @type {THREE.Box3} */
     const box = new THREE.Box3().setFromObject(mesh);
-    /** @type {THREE.Vector3} */
     const size = box.getSize(new THREE.Vector3());
     const maxSize = Math.max(size.x, size.y, size.z);
     const scale = 2 / maxSize;
@@ -157,7 +243,12 @@ loader.load(
     // Rotate to better viewing angle
     mesh.rotation.x = -Math.PI / 2;
 
-    scene.add(mesh);
+    // Add mesh to the container instead of directly to the scene
+    meshContainer.add(mesh);
+
+    // Update controls target to match container position
+    controls.target.copy(meshContainer.position);
+    controls.update();
   },
   /**
    * Progress callback
@@ -191,6 +282,12 @@ window.addEventListener("resize", () => {
  */
 function animate() {
   requestAnimationFrame(animate);
+
+  // Rotate the mesh container if rotation is enabled
+  if (isRotating) {
+    meshContainer.rotation.y += rotationSpeed;
+  }
+
   controls.update();
   renderer.render(scene, camera);
 }
