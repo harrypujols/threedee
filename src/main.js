@@ -4,7 +4,6 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
 /** @type {THREE.Scene} */
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x111111);
 
 /**
  * Create perspective camera
@@ -25,9 +24,13 @@ camera.rotation.set(0.077, -0.502, 0.037); // Your specified rotation
  * Create WebGL renderer with antialiasing
  * @type {THREE.WebGLRenderer}
  */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  alpha: true, // Enable transparency
+});
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setClearColor(0x000000, 0); // Set clear color to transparent
 document.body.appendChild(renderer.domElement);
 
 /**
@@ -45,45 +48,11 @@ const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
 directionalLight.position.set(1, 1, 1);
 scene.add(directionalLight);
 
-// Add world axes helper
-const worldAxesHelper = new THREE.AxesHelper(1);
-worldAxesHelper.material.linewidth = 2;
-scene.add(worldAxesHelper);
-
 // Create a container for the mesh
 const meshContainer = new THREE.Group();
 meshContainer.position.x = 0.3; // Updated from 0.25 to 0.3 (30% to the right)
 meshContainer.rotation.y = THREE.MathUtils.degToRad(85);
-
-// Add local axes helper to the container
-const localAxesHelper = new THREE.AxesHelper(0.5);
-localAxesHelper.material.linewidth = 2;
-meshContainer.add(localAxesHelper);
-
 scene.add(meshContainer);
-
-// Add axis labels
-const createAxisLabel = (text, position, color) => {
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d");
-  canvas.width = 64;
-  canvas.height = 32;
-  context.fillStyle = color;
-  context.font = "24px Arial";
-  context.fillText(text, 0, 24);
-
-  const texture = new THREE.CanvasTexture(canvas);
-  const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
-  const sprite = new THREE.Sprite(spriteMaterial);
-  sprite.position.copy(position);
-  sprite.scale.set(0.1, 0.05, 1);
-  return sprite;
-};
-
-// Add world axis labels
-scene.add(createAxisLabel("X", new THREE.Vector3(1.1, 0, 0), "#ff0000"));
-scene.add(createAxisLabel("Y", new THREE.Vector3(0, 1.1, 0), "#00ff00"));
-scene.add(createAxisLabel("Z", new THREE.Vector3(0, 0, 1.1), "#0000ff"));
 
 /**
  * Add orbit controls for camera manipulation
@@ -165,8 +134,6 @@ window.addEventListener("keydown", (event) => {
   }
   if (event.key === "a" || event.key === "A") {
     axesVisible = !axesVisible;
-    worldAxesHelper.visible = axesVisible;
-    localAxesHelper.visible = axesVisible;
     console.log("Axes:", axesVisible ? "ON" : "OFF");
   }
   // Add arrow key controls for fine-tuning the rotation axis
