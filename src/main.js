@@ -1,6 +1,8 @@
+import "./styles.css";
 import * as THREE from "three";
 import { PLYLoader } from "three/addons/loaders/PLYLoader.js";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { SimplifyModifier } from "three/addons/modifiers/SimplifyModifier.js";
 
 /** @type {THREE.Scene} */
 const scene = new THREE.Scene();
@@ -26,11 +28,11 @@ camera.rotation.set(0.077, -0.502, 0.037); // Your specified rotation
  */
 const renderer = new THREE.WebGLRenderer({
   antialias: true,
-  alpha: true, // Enable transparency
+  alpha: false, // Changed to false since we don't need transparency
 });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setClearColor(0x000000, 0); // Set clear color to transparent
+renderer.setClearColor(0x111111); // Set to match body background
 document.body.appendChild(renderer.domElement);
 
 /**
@@ -66,101 +68,85 @@ controls.target.set(0.0, 0.0, 0.0);
 let isRotating = true;
 const rotationSpeed = 0.01; // Adjust this value to change rotation speed
 
-// Add keyboard controls for axis visibility
-let axesVisible = true;
+// Keep track of the current mesh
+let currentMesh = null;
+const modifier = new SimplifyModifier();
 
-// Add event listener for control changes
-controls.addEventListener("change", () => {
-  // Log camera position and zoom info
-  console.log("Camera Position:", {
-    x: camera.position.x.toFixed(3),
-    y: camera.position.y.toFixed(3),
-    z: camera.position.z.toFixed(3),
+// Function to create a mesh with a specific detail level
+function createOptimizedMesh(geometry, detailLevel) {
+  // Clone the geometry to avoid modifying the original
+  const workingGeometry = geometry.clone();
+
+  // Calculate target number of vertices
+  const targetVertices = Math.floor(
+    geometry.attributes.position.count * detailLevel
+  );
+
+  try {
+    // Only optimize if we're reducing vertices
+    if (targetVertices < geometry.attributes.position.count) {
+      const simplified = modifier.modify(workingGeometry, targetVertices);
+      simplified.computeVertexNormals();
+
+      const material = new THREE.MeshStandardMaterial({
+        vertexColors: true,
+        flatShading: false,
+        roughness: 0.5,
+        metalness: 0.0,
+      });
+
+      return new THREE.Mesh(simplified, material);
+    }
+  } catch (error) {
+    console.error("Optimization failed:", error);
+  }
+
+  // Return mesh with original geometry if optimization fails or isn't needed
+  return new THREE.Mesh(
+    workingGeometry,
+    new THREE.MeshStandardMaterial({
+      vertexColors: true,
+      flatShading: false,
+      roughness: 0.5,
+      metalness: 0.0,
+    })
+  );
+}
+
+// Function to update mesh with new detail level
+function updateMeshDetail(originalGeometry, detailLevel) {
+  if (currentMesh) {
+    meshContainer.remove(currentMesh);
+  }
+
+  const newMesh = createOptimizedMesh(originalGeometry, detailLevel);
+
+  // Center and scale the mesh
+  newMesh.geometry.computeBoundingBox();
+  const center = new THREE.Vector3();
+  newMesh.geometry.boundingBox.getCenter(center);
+  newMesh.geometry.center();
+
+  const box = new THREE.Box3().setFromObject(newMesh);
+  const size = box.getSize(new THREE.Vector3());
+  const maxSize = Math.max(size.x, size.y, size.z);
+  const scale = 2 / maxSize;
+  newMesh.scale.multiplyScalar(scale);
+
+  newMesh.rotation.x = -Math.PI / 2;
+
+  meshContainer.add(newMesh);
+  currentMesh = newMesh;
+
+  // Log statistics
+  console.log(`Detail Level ${detailLevel * 100}%:`, {
+    vertices: newMesh.geometry.attributes.position.count,
+    triangles: newMesh.geometry.index ? newMesh.geometry.index.count / 3 : 0,
   });
+}
 
-  // Log camera rotation
-  console.log("Camera Rotation:", {
-    x: camera.rotation.x.toFixed(3),
-    y: camera.rotation.y.toFixed(3),
-    z: camera.rotation.z.toFixed(3),
-  });
-
-  // Log controls target (what the camera is looking at)
-  console.log("Controls Target:", {
-    x: controls.target.x.toFixed(3),
-    y: controls.target.y.toFixed(3),
-    z: controls.target.z.toFixed(3),
-  });
-
-  // Log camera field of view
-  console.log("Camera FOV:", camera.fov.toFixed(3));
-});
-
-// Add key command to save position
-window.addEventListener("keydown", (event) => {
-  if (event.key === "s" || event.key === "S") {
-    console.log("\nCamera Setup Configuration:");
-    console.log(
-      `camera.position.set(${camera.position.x.toFixed(
-        3
-      )}, ${camera.position.y.toFixed(3)}, ${camera.position.z.toFixed(3)});`
-    );
-    console.log(
-      `camera.rotation.set(${camera.rotation.x.toFixed(
-        3
-      )}, ${camera.rotation.y.toFixed(3)}, ${camera.rotation.z.toFixed(3)});`
-    );
-    console.log(
-      `controls.target.set(${controls.target.x.toFixed(
-        3
-      )}, ${controls.target.y.toFixed(3)}, ${controls.target.z.toFixed(3)});`
-    );
-    console.log(`camera.fov = ${camera.fov.toFixed(3)};`);
-    console.log(`\nContainer Configuration:`);
-    console.log(
-      `meshContainer.position.x = ${meshContainer.position.x.toFixed(3)};`
-    );
-    console.log(
-      `meshContainer.rotation.y = ${meshContainer.rotation.y.toFixed(
-        3
-      )}; // ${THREE.MathUtils.radToDeg(meshContainer.rotation.y).toFixed(
-        1
-      )} degrees`
-    );
-  }
-  if (event.key === "r" || event.key === "R") {
-    isRotating = !isRotating;
-    console.log("Rotation:", isRotating ? "ON" : "OFF");
-  }
-  if (event.key === "a" || event.key === "A") {
-    axesVisible = !axesVisible;
-    console.log("Axes:", axesVisible ? "ON" : "OFF");
-  }
-  // Add arrow key controls for fine-tuning the rotation axis
-  if (event.key === "ArrowRight") {
-    meshContainer.position.x += 0.1;
-    console.log("Container X position:", meshContainer.position.x.toFixed(3));
-  }
-  if (event.key === "ArrowLeft") {
-    meshContainer.position.x -= 0.1;
-    console.log("Container X position:", meshContainer.position.x.toFixed(3));
-  }
-  // Add controls for Y rotation adjustment
-  if (event.key === "ArrowUp") {
-    meshContainer.rotation.y += THREE.MathUtils.degToRad(5);
-    console.log(
-      "Container Y rotation (degrees):",
-      THREE.MathUtils.radToDeg(meshContainer.rotation.y).toFixed(1)
-    );
-  }
-  if (event.key === "ArrowDown") {
-    meshContainer.rotation.y -= THREE.MathUtils.degToRad(5);
-    console.log(
-      "Container Y rotation (degrees):",
-      THREE.MathUtils.radToDeg(meshContainer.rotation.y).toFixed(1)
-    );
-  }
-});
+// Store the original geometry for optimization
+let originalGeometry = null;
 
 /**
  * Load and process PLY file
@@ -174,46 +160,18 @@ loader.load(
    * @param {THREE.BufferGeometry} geometry - The loaded PLY geometry
    */
   (geometry) => {
-    // Enable vertex colors and compute normals
     geometry.computeVertexNormals();
+    originalGeometry = geometry.clone();
 
-    // Compute the bounding box before creating the mesh
-    geometry.computeBoundingBox();
-    const center = new THREE.Vector3();
-    geometry.boundingBox.getCenter(center);
-    geometry.center();
-
-    /**
-     * Create material with vertex colors enabled
-     * @type {THREE.MeshStandardMaterial}
-     */
-    const material = new THREE.MeshStandardMaterial({
-      vertexColors: true,
-      flatShading: false,
-      roughness: 0.5,
-      metalness: 0.0,
+    // Log original stats
+    console.log("Original geometry:", {
+      vertices: geometry.attributes.position.count,
+      triangles: geometry.index ? geometry.index.count / 3 : 0,
     });
 
-    /**
-     * Create mesh with geometry and material
-     * @type {THREE.Mesh}
-     */
-    const mesh = new THREE.Mesh(geometry, material);
+    // Create initial mesh at 100% detail
+    updateMeshDetail(geometry, 1.0);
 
-    // Scale the model to fit the view
-    const box = new THREE.Box3().setFromObject(mesh);
-    const size = box.getSize(new THREE.Vector3());
-    const maxSize = Math.max(size.x, size.y, size.z);
-    const scale = 2 / maxSize;
-    mesh.scale.multiplyScalar(scale);
-
-    // Rotate to better viewing angle
-    mesh.rotation.x = -Math.PI / 2;
-
-    // Add mesh to the container instead of directly to the scene
-    meshContainer.add(mesh);
-
-    // Update controls target to match container position
     controls.target.copy(meshContainer.position);
     controls.update();
   },
@@ -232,6 +190,23 @@ loader.load(
     console.error("Error loading PLY file:", error);
   }
 );
+
+// Add keyboard controls for optimization levels
+window.addEventListener("keydown", (event) => {
+  if (event.key === "r" || event.key === "R") {
+    isRotating = !isRotating;
+    console.log("Rotation:", isRotating ? "ON" : "OFF");
+  }
+  // Number keys 1-9 for different optimization levels
+  if (originalGeometry && event.key >= "1" && event.key <= "9") {
+    const detailLevel = parseInt(event.key) / 10;
+    updateMeshDetail(originalGeometry, detailLevel);
+  }
+  // 0 key for full detail
+  if (originalGeometry && event.key === "0") {
+    updateMeshDetail(originalGeometry, 1.0);
+  }
+});
 
 /**
  * Handle window resize

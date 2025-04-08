@@ -8,6 +8,16 @@ export default defineConfig({
   build: {
     outDir: "docs",
     assetsDir: "assets",
+    rollupOptions: {
+      output: {
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name.endsWith(".css")) {
+            return "assets/styles[extname]";
+          }
+          return "assets/[name]-[hash][extname]";
+        },
+      },
+    },
   },
   base: "./",
 });
