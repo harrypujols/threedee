@@ -55,7 +55,7 @@ controls.enableDamping = true;
  */
 const loader = new PLYLoader();
 loader.load(
-  "/harry.ply",
+  "./harry.ply",
   /**
    * Success callback - creates and adds mesh to scene
    * @param {THREE.BufferGeometry} geometry - The loaded PLY geometry
