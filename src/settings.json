@@ -1,0 +1,17 @@
+{
+  "camera": {
+    "position": { "x": -0.521, "y": -0.073, "z": 0.948 },
+    "rotation": { "x": 0.077, "y": -0.502, "z": 0.037 },
+    "fov": 75
+  },
+  "mesh": {
+    "filePath": "./harry.ply",
+    "initialRotation": { "x": -1.5708, "y": 0, "z": 0 }, // -Math.PI / 2
+    "scaleFactor": 2
+  },
+  "rotation": {
+    "speed": 0.01,
+    "axisOffset": { "x": 0.3, "y": 0, "z": 0 },
+    "yRotation": 85
+  }
+}

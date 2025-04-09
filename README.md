@@ -31,16 +31,15 @@ npm install
 
 ## Project Structure
 
-````
-
 ## Development Server
 
 To run the project locally:
 
 1. Start the development server:
+
 ```bash
 npm start
-````
+```
 
 2. Open your browser and navigate to:
    - http://localhost:5173 (default Vite port)
