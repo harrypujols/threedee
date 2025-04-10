@@ -6,7 +6,7 @@
   },
   "mesh": {
     "filePath": "./harry.ply",
-    "initialRotation": { "x": -1.5708, "y": 0, "z": 0 }, // -Math.PI / 2
+    "initialRotation": { "x": -1.5708, "y": 0, "z": 0 },
     "scaleFactor": 2
   },
   "rotation": {
