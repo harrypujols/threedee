@@ -10,7 +10,7 @@
     "scaleFactor": 2
   },
   "rotation": {
-    "speed": 0.01,
+    "speed": 0,
     "axisOffset": { "x": 0.3, "y": 0, "z": 0 },
     "yRotation": 85
   }
